@@ -30,32 +30,57 @@ var UserSchema = new mongoose.Schema({
       required: true
     }
   }]
- }, {
-   usePushEach: true
- });
+}, {
+  usePushEach: true
+});
 
- UserSchema.methods.toJSON = function() {
-   var user = this;
-   var userObject = user.toObject();
+UserSchema.methods.toJSON = function () {
+  var user = this;
+  var userObject = user.toObject();
 
-   return _.pick(userObject, ['_id','email']);
- }
+  return _.pick(userObject, ['_id', 'email']);
+}
 
- // Arrow functions do not bind a 'this' keyword. 'this' stores the indivirual document.
- UserSchema.methods.generateAuthToken = function() {
+// Arrow functions do not bind a 'this' keyword. 'this' stores the indivirual document.
+UserSchema.methods.generateAuthToken = function () {
   var user = this;
   var access = 'auth';
-  var token = jwt.sign({_id: user._id.toHexString(), access}, 'abc123').toString();
+  var token = jwt.sign({
+    _id: user._id.toHexString(),
+    access
+  }, 'abc123').toString();
 
-  user.tokens = user.tokens.concat([{access, token}]);
+  user.tokens = user.tokens.concat([{
+    access,
+    token
+  }]);
 
   // Returns the token value, as the success argument for the next 'then' call.
   return user.save().then(() => {
     return token;
   });
- }
+}
+
+UserSchema.statics.findByToken = function (token) {
+  var User = this;
+  var decoded;
+
+  try {
+    decoded = jwt.verify(token, 'abc123');    
+  } catch (error) {
+    return Promise.reject();
+  }
+
+  return User.findOne({
+    '_id': decoded._id,
+    'tokens.token': token,
+    'tokens.access': 'auth'
+  });
+}
 
 //Defines a data model.
 var User = mongoose.model('User', UserSchema);
 
-module.exports = {User};
+module.exports = {
+  User
+};
