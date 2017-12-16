@@ -44,7 +44,7 @@ UserSchema.methods.toJSON = function () {
 
 // Arrow functions do not bind a 'this' keyword. 'this' stores the indivirual document.
 UserSchema.methods.generateAuthToken = function () {
-  var user = this;
+  var user = this; // static user instance object
   var access = 'auth';
   var token = jwt.sign({
     _id: user._id.toHexString(),
@@ -63,7 +63,7 @@ UserSchema.methods.generateAuthToken = function () {
 }
 
 UserSchema.statics.findByToken = function (token) {
-  var User = this;
+  var User = this; //static user class object (I think...)
   var decoded;
 
   try {
@@ -76,6 +76,26 @@ UserSchema.statics.findByToken = function (token) {
     '_id': decoded._id,
     'tokens.token': token,
     'tokens.access': 'auth'
+  });
+};
+
+UserSchema.statics.findByCredentials = function(email, password) {
+  var User = this;
+  return User.findOne({email}).then(user => {
+    if (!user) {
+      return Promise.reject();
+    }
+
+    //wrap the bcrypt call in a promise since it only supports calbacks.
+    return new Promise((resolve, reject) => {
+      bcrypt.compare(password, user.password, (err, res) => {
+        if (res) {
+          resolve(user);
+        } else {
+          reject();
+        }
+      });
+    });
   });
 };
 
